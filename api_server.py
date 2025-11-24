@@ -53,6 +53,11 @@ def _load_settings_for_task(task: Task) -> Settings:
     return Settings(llm=settings.llm, pipeline=pipeline)
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.post("/tasks", response_model=Task)
 def create_task(name: str, my_party: str):
     return task_manager.create_task(name=name, my_party=my_party)
@@ -61,6 +66,14 @@ def create_task(name: str, my_party: str):
 @app.get("/tasks", response_model=List[Task])
 def list_tasks():
     return task_manager.list_tasks()
+
+
+@app.get("/tasks/{task_id}", response_model=Task)
+def get_task(task_id: str):
+    try:
+        return task_manager.get_task(task_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found")
 
 
 @app.post("/tasks/{task_id}/upload")
@@ -96,22 +109,26 @@ async def run_task(
     settings = _load_settings_for_task(task)
     pipeline = settings.pipeline.model_copy(update={"concurrent_requests": concurrency})
     settings = Settings(llm=settings.llm, pipeline=pipeline)
-    try:
-        results = await process_contracts(
-            settings=settings,
-            my_party=my_party or task.my_party,
-            upstream_header_path=UPSTREAM_HEADERS_PATH,
-            downstream_header_path=DOWNSTREAM_HEADERS_PATH,
-            force_direction=force_direction if force_direction in {"upstream", "downstream"} else None,
-        )
-        task_manager.update_status(task_id, "completed", f"处理完成 {len(results)} 份合同")
-        summary = {"upstream": 0, "downstream": 0}
-        for r in results:
-            summary[r.direction] += 1
-        return {"status": "ok", "summary": summary, "results": len(results)}
-    except Exception as exc:  # pragma: no cover - simple error propagation
-        task_manager.update_status(task_id, "failed", str(exc))
-        raise HTTPException(status_code=500, detail=str(exc))
+
+    async def _job():
+        try:
+            results = await process_contracts(
+                settings=settings,
+                my_party=my_party or task.my_party,
+                upstream_header_path=UPSTREAM_HEADERS_PATH,
+                downstream_header_path=DOWNSTREAM_HEADERS_PATH,
+                force_direction=force_direction if force_direction in {"upstream", "downstream"} else None,
+            )
+            summary = {"upstream": 0, "downstream": 0}
+            for r in results:
+                summary[r.direction] += 1
+            task_manager.update_summary(task_id, summary)
+            task_manager.update_status(task_id, "completed", f"处理完成 {len(results)} 份合同")
+        except Exception as exc:
+            task_manager.update_status(task_id, "failed", str(exc))
+
+    asyncio.create_task(_job())
+    return {"status": "accepted", "message": "已进入后台处理"}
 
 
 @app.get("/tasks/{task_id}/results")

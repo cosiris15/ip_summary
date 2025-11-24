@@ -280,6 +280,7 @@
       const apiBase = "https://ip-summary.onrender.com";
       let currentTask = null;
       const selected = { upstream: new Set(), downstream: new Set() };
+      let statusTimer = null;
 
       function toast(msg) {
         const t = document.getElementById("toast");
@@ -298,6 +299,7 @@
         document.getElementById("current-task").innerText = `${currentTask.name} (#${currentTask.id})`;
         document.getElementById("global-status").innerText = "已创建";
         toast("任务已创建");
+        startPollingStatus();
       }
 
       async function uploadFiles() {
@@ -326,11 +328,9 @@
           document.getElementById("run-status").innerText = "处理失败";
           return toast("处理失败");
         }
-        const data = await res.json();
-        document.getElementById("run-status").innerText = `完成，上游${data.summary.upstream}，下游${data.summary.downstream}`;
-        document.getElementById("global-status").innerText = "已完成";
-        toast("处理完成");
-        await refresh();
+        document.getElementById("run-status").innerText = "已提交后台处理...";
+        toast("已提交后台处理");
+        startPollingStatus();
       }
 
       async function loadResults(direction) {
@@ -456,6 +456,29 @@
         const data = await res.json();
         document.getElementById("finalize-status").innerText = `已入库：${JSON.stringify(data.outputs[direction])}`;
         toast("入库完成");
+      }
+
+      async function pollStatusOnce() {
+        if (!currentTask) return;
+        const res = await fetch(`${apiBase}/tasks/${currentTask.id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        document.getElementById("global-status").innerText = `${data.status}${data.message ? "：" + data.message : ""}`;
+        if (data.summary) {
+          const up = data.summary.upstream || 0;
+          const down = data.summary.downstream || 0;
+          document.getElementById("run-status").innerText = `完成，上游${up}，下游${down}`;
+        }
+        if (data.status === "completed") {
+          clearInterval(statusTimer);
+          await refresh();
+        }
+      }
+
+      function startPollingStatus() {
+        if (statusTimer) clearInterval(statusTimer);
+        pollStatusOnce();
+        statusTimer = setInterval(pollStatusOnce, 4000);
       }
     </script>
   </body>

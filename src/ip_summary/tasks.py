@@ -16,6 +16,7 @@ class Task(BaseModel):
     created_at: str
     status: str = Field(default="created")
     message: Optional[str] = None
+    summary: Optional[Dict[str, int]] = None
     input_dir: Path
     intermediate_dir: Path
     final_dir: Path
@@ -77,6 +78,16 @@ class TaskManager:
         task = data[task_id]
         task.status = status
         task.message = message
+        data[task_id] = task
+        self._save_index(data)
+        return task
+
+    def update_summary(self, task_id: str, summary: Dict[str, int]) -> Task:
+        data = self._load_index()
+        if task_id not in data:
+            raise KeyError(f"Task {task_id} not found")
+        task = data[task_id]
+        task.summary = summary
         data[task_id] = task
         self._save_index(data)
         return task
