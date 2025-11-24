@@ -1,0 +1,57 @@
+{
+  "batch_info": {
+    "batch_name": "版权授权链-下游",
+    "processing_id": "ip_sum_20251124_002039",
+    "init_date": "2025-11-24T00:20:39.571772",
+    "current_batch": "20251119_down"
+  },
+  "paths": {
+    "input_dir": "输入/20251119_down/",
+    "output_dir": "输出/20251119_down/",
+    "intermediate_dir": "输出/20251119_down/中间数据/",
+    "tools_dir": "工具/"
+  },
+  "file_templates": {
+    "extraction_output": "{batch_name}_合同梳理数据.json",
+    "excel_report": "【版权授权链】漫画作品授权合同梳理数据.xlsx"
+  },
+  "input_files": {
+    "contract_docs": [
+      "T-277-AUT-20160907-02.md",
+      "T-277-AUT-20161011-02.md",
+      "T-277-AUT-20161011-03.md",
+      "T-277-AUT-20161011-05.md",
+      "T-277-AUT-20161011-09.md",
+      "T-277-AUT-20170322-03.md",
+      "T-277-AUT-20170626-03.md",
+      "T-277-AUT-20171025-03.md",
+      "T-277-AUT-20180125-06.md",
+      "T-277-AUT-20180402-08.md",
+      "T-277-AUT-20180627-02.md",
+      "T-277-AUT-20180903-09.md",
+      "T-277-AUT-20181205-03.md",
+      "T102-PCG-2023062100717.md",
+      "T102-PCG-2023101700515.md",
+      "T102-PCG-2023102600274.md",
+      "T102-PCG-2023111000343.md",
+      "T221-PCG-2020030400003.md",
+      "T221-PCG-2020110600001.md",
+      "T221-PCG-2020122500003.md",
+      "T221-PCG-2021020100009.md",
+      "T221-PCG-2021031000001.md",
+      "T221-PCG-2021063000001.md",
+      "T221-PCG-2021110300013.md",
+      "T221-PCG-2022042100001.md",
+      "T221-PCG-2023031400005.md",
+      "T221-PCG-2023080300001.md",
+      "t179-pcg-2021012000001.md"
+    ],
+    "total_count": 28,
+    "scan_date": "2025-11-24T00:20:39.289894"
+  },
+  "processing_status": {
+    "extraction_completed": false,
+    "excel_completed": false,
+    "last_updated": "2025-11-24T00:20:39.571922"
+  }
+}

@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+venv/
+ENV/
+env/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Project specific
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Temporary files
+*.tmp
+*.bak
+
+# Logs
+logs/
+*.log
+
+# LLM Configuration (contains API keys)
+工具/config/llm_config.json
+*.api_key
+
+# Test outputs
+输出/test_*/
+输出/*_test_*/
+
+# Output files that should not be tracked
+companies/*/输出/round_*/中间数据/*.json
+companies/*/输出/round_*/*.docx
+companies/*/输出/round_*/*.md
+
+# Keep example company output as reference
+!companies/优界科技_示例/输出/

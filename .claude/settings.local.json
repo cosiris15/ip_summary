@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "WebFetch(domain:*)",
+      "Task",
+      "TodoWrite",
+      "NotebookEdit",
+      "AskUserQuestion",
+      "SlashCommand",
+      "Skill",
+      "BashOutput",
+      "KillShell",
+      "mcp__ide__getDiagnostics",
+      "mcp__ide__executeCode",
+      "Bash(chmod:*)",
+      "Bash(pip3 install:*)",
+      "Bash(find:*)",
+      "Bash(/dev/null)",
+      "Bash(cat:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf /root:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(format:*)",
+      "Bash(dd:*)",
+      "Bash(mkfs:*)",
+      "Bash(shutdown:*)",
+      "Bash(reboot:*)",
+      "Bash(init:*)"
+    ],
+    "ask": []
+  }
+}

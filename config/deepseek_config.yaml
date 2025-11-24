@@ -1,0 +1,16 @@
+llm:
+  provider: deepseek
+  api_key: "sk-d02d6d8c02f74563b33894a0e8fd2ffd"
+  base_url: "https://api.deepseek.com"
+  model: "deepseek-chat"
+  temperature: 0.1
+  top_p: 0.9
+  max_output_tokens: 2000
+  request_timeout: 60
+
+pipeline:
+  input_dir: "合同样例"
+  intermediate_dir: "output/intermediate"
+  final_dir: "output/final"
+  history_dir: "output/history"
+  concurrent_requests: 3

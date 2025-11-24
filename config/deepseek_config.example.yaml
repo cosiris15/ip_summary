@@ -1,0 +1,19 @@
+# Copy this file to config/deepseek_config.yaml and fill in the actual values.
+# The api_key field should hold your DeepSeek API key.
+llm:
+  provider: deepseek
+  api_key: "YOUR_DEEPSEEK_API_KEY"
+  base_url: "https://api.deepseek.com"
+  model: "deepseek-chat"
+  temperature: 0.1
+  top_p: 0.9
+  max_output_tokens: 2000
+  request_timeout: 60
+
+# Global pipeline defaults. You can override them via CLI arguments.
+pipeline:
+  input_dir: "合同样例"
+  intermediate_dir: "output/intermediate"
+  final_dir: "output/final"
+  history_dir: "output/history"
+  concurrent_requests: 3

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IP 合同梳理控制台</title>
+    <style>
+      :root {
+        --bg: radial-gradient(120% 120% at 20% 20%, #0f172a, #0a0f1f 45%, #0b1224);
+        --card: rgba(255, 255, 255, 0.06);
+        --accent: #5fe1b3;
+        --accent-2: #7aa2f7;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --border: rgba(255, 255, 255, 0.08);
+        --radius: 14px;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "SF Pro Display", "Avenir Next", "Segoe UI", "PingFang SC",
+          system-ui, -apple-system, sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+      header {
+        padding: 24px 32px 10px;
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+      }
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        letter-spacing: 0.2px;
+      }
+      .pill {
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+        font-size: 13px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 16px;
+        padding: 0 32px 28px;
+      }
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        backdrop-filter: blur(10px);
+      }
+      .panel h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      label {
+        display: block;
+        margin: 10px 0 4px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        font-size: 14px;
+      }
+      .btn {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        color: #0a0f1f;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        margin-top: 12px;
+        width: 100%;
+        font-weight: 600;
+      }
+      .btn.secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text);
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+      }
+      .row > * {
+        flex: 1;
+      }
+      .status {
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      section.board {
+        background: var(--card);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        padding: 14px;
+      }
+      .board-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .badge {
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        min-width: 600px;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 6px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        background: rgba(255, 255, 255, 0.07);
+        backdrop-filter: blur(8px);
+      }
+      td input {
+        width: 100%;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.03);
+        color: var(--text);
+        border-radius: 6px;
+        padding: 4px 6px;
+        font-size: 12px;
+      }
+      .table-wrap {
+        overflow: auto;
+        max-height: 420px;
+        border-radius: var(--radius);
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+      }
+      .cta button {
+        flex: 1;
+      }
+      .inline {
+        display: inline-flex;
+        gap: 8px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .toast {
+        position: fixed;
+        right: 22px;
+        bottom: 22px;
+        background: #111827;
+        color: #e5e7eb;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>IP 合同梳理控制台</h1>
+        <div class="pill">上游/下游一体化 · DeepSeek LLM</div>
+      </div>
+      <div class="pill">状态：<span id="global-status">未开始</span></div>
+    </header>
+    <main>
+      <div class="panel">
+        <h2>新建任务</h2>
+        <label>任务名称</label>
+        <input id="task-name" type="text" placeholder="例如：2025Q1-腾讯动漫批次" />
+        <label>我方主体</label>
+        <input id="my-party" type="text" placeholder="例如：深圳腾讯" />
+        <button class="btn" onclick="createTask()">创建任务</button>
+        <div class="status">当前任务：<span id="current-task">无</span></div>
+        <hr style="border: 1px solid var(--border); margin: 16px 0;" />
+        <h2>上传合同</h2>
+        <input id="file-input" type="file" multiple />
+        <button class="btn secondary" onclick="uploadFiles()">上传到当前任务</button>
+        <div class="status muted" id="upload-status">等待上传…</div>
+        <hr style="border: 1px solid var(--border); margin: 16px 0;" />
+        <h2>运行 LLM</h2>
+        <label>方向模式</label>
+        <select id="run-mode" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,0.04);color:var(--text);font-size:14px;">
+          <option value="auto">自动判定</option>
+          <option value="upstream">强制上游</option>
+          <option value="downstream">强制下游</option>
+        </select>
+        <div class="cta">
+          <button class="btn" onclick="runTask()">运行处理</button>
+          <button class="btn secondary" onclick="refresh()">刷新结果</button>
+        </div>
+        <div class="status muted" id="run-status">尚未处理</div>
+        <hr style="border: 1px solid var(--border); margin: 16px 0;" />
+        <h2>入库</h2>
+        <div class="cta">
+          <button class="btn secondary" onclick="finalize('upstream')">确认上游入库</button>
+          <button class="btn secondary" onclick="finalize('downstream')">确认下游入库</button>
+        </div>
+        <div class="status muted" id="finalize-status">未入库</div>
+      </div>
+
+      <div class="panel" style="grid-column: 2 / span 1;">
+        <div class="board-header">
+          <div>
+            <h2 style="margin: 0;">处理结果</h2>
+            <div class="muted">上游/下游分栏，单元格可直接编辑并保存</div>
+          </div>
+          <div class="inline">
+            <button class="btn secondary" style="width: auto;" onclick="loadResults('upstream')">刷新上游</button>
+            <button class="btn secondary" style="width: auto;" onclick="loadResults('downstream')">刷新下游</button>
+          </div>
+        </div>
+        <section class="board">
+          <div class="board-header">
+            <strong>上游合同</strong>
+            <span class="badge" id="up-count">0 条</span>
+          </div>
+          <div class="table-wrap" id="upstream-table"></div>
+        </section>
+        <div style="height: 12px;"></div>
+        <section class="board">
+          <div class="board-header">
+            <strong>下游合同</strong>
+            <span class="badge" id="down-count">0 条</span>
+          </div>
+          <div class="table-wrap" id="downstream-table"></div>
+        </section>
+        <div style="height: 14px;"></div>
+        <div class="board-header">
+          <div class="inline">
+            <button class="btn secondary" style="width: auto;" onclick="downloadFinal('upstream','csv')">下载上游CSV</button>
+            <button class="btn secondary" style="width: auto;" onclick="downloadFinal('upstream','xlsx')">下载上游Excel</button>
+          </div>
+          <div class="inline">
+            <button class="btn secondary" style="width: auto;" onclick="downloadFinal('downstream','csv')">下载下游CSV</button>
+            <button class="btn secondary" style="width: auto;" onclick="downloadFinal('downstream','xlsx')">下载下游Excel</button>
+          </div>
+          <button class="btn secondary" style="width: auto;" onclick="downloadArchive()">打包下载全部</button>
+        </div>
+      </div>
+    </main>
+    <div class="toast" id="toast"></div>
+
+    <script>
+      const apiBase = "";
+      let currentTask = null;
+      const selected = { upstream: new Set(), downstream: new Set() };
+
+      function toast(msg) {
+        const t = document.getElementById("toast");
+        t.innerText = msg;
+        t.style.display = "block";
+        setTimeout(() => (t.style.display = "none"), 2200);
+      }
+
+      async function createTask() {
+        const name = document.getElementById("task-name").value.trim();
+        const myParty = document.getElementById("my-party").value.trim();
+        if (!name || !myParty) return toast("请填写任务名称与我方主体");
+        const res = await fetch(`${apiBase}/tasks?name=${encodeURIComponent(name)}&my_party=${encodeURIComponent(myParty)}`, { method: "POST" });
+        if (!res.ok) return toast("创建失败");
+        currentTask = await res.json();
+        document.getElementById("current-task").innerText = `${currentTask.name} (#${currentTask.id})`;
+        document.getElementById("global-status").innerText = "已创建";
+        toast("任务已创建");
+      }
+
+      async function uploadFiles() {
+        if (!currentTask) return toast("请先创建任务");
+        const files = document.getElementById("file-input").files;
+        if (!files.length) return toast("请选择文件");
+        const fd = new FormData();
+        for (const f of files) fd.append("files", f);
+        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/upload`, { method: "POST", body: fd });
+        if (!res.ok) return toast("上传失败");
+        const data = await res.json();
+        document.getElementById("upload-status").innerText = `已上传：${data.saved.join("、")}`;
+        toast("上传成功");
+      }
+
+      async function runTask() {
+        if (!currentTask) return toast("请先创建任务");
+        document.getElementById("run-status").innerText = "处理中...";
+        const mode = document.getElementById("run-mode").value;
+        const fd = new URLSearchParams();
+        fd.append("my_party", currentTask.my_party);
+        fd.append("concurrency", "3");
+        if (mode !== "auto") fd.append("force_direction", mode);
+        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/run?${fd.toString()}`, { method: "POST" });
+        if (!res.ok) {
+          document.getElementById("run-status").innerText = "处理失败";
+          return toast("处理失败");
+        }
+        const data = await res.json();
+        document.getElementById("run-status").innerText = `完成，上游${data.summary.upstream}，下游${data.summary.downstream}`;
+        document.getElementById("global-status").innerText = "已完成";
+        toast("处理完成");
+        await refresh();
+      }
+
+      async function loadResults(direction) {
+        if (!currentTask) return;
+        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results?direction=${direction}`);
+        if (!res.ok) return toast("拉取结果失败");
+        const data = await res.json();
+        if (direction === "upstream") document.getElementById("up-count").innerText = `${data.count} 条`;
+        else document.getElementById("down-count").innerText = `${data.count} 条`;
+        renderTable(direction, data.items || []);
+      }
+
+      async function refresh() {
+        await loadResults("upstream");
+        await loadResults("downstream");
+      }
+
+      function renderTable(direction, items) {
+        const container = document.getElementById(`${direction}-table`);
+        if (!items.length) {
+          container.innerHTML = '<div class="muted">暂无数据</div>';
+          return;
+        }
+        const firstFields = items[0].fields;
+        const headers = Object.keys(firstFields);
+        const headerRow = headers.map((h) => `<th>${h}</th>`).join("");
+        let body = "";
+        items.forEach((item, idx) => {
+          const jsonName = item.contract_path.split("/").pop().replace(/\.[^/.]+$/, "") + ".json";
+          const rowInputs = headers
+            .map(
+              (h) =>
+                `<td><input data-direction="${direction}" data-file="${item.contract_path}" data-key="${h.replace(/"/g, "&quot;")}" value="${(item.fields[h] ?? "").toString().replace(/"/g, "&quot;")}" onblur="saveCell(this)" /></td>`
+            )
+            .join("");
+          const actions = `<div class="inline"><button class="btn secondary" style="width:auto;padding:6px 10px;" onclick="moveDirection('${jsonName}','${direction}','${direction==='upstream'?'downstream':'upstream'}')">改为${direction === 'upstream' ? '下游' : '上游'}</button></div>`;
+          const checked = selected[direction].has(jsonName) ? "checked" : "";
+          body += `<tr><td style="min-width:220px; font-weight:600; color: var(--accent);"><input type="checkbox" ${checked} onchange="toggleSelect('${direction}','${jsonName}', this.checked)" /> ${item.contract_path.split("/").pop()}<br/><span class="muted">${actions}</span></td>${rowInputs}</tr>`;
+        });
+        const batchBtns = `<div class="inline" style="margin:8px 0;"><button class="btn secondary" style="width:auto;" onclick="batchMove('${direction}','upstream')">批量改为上游</button><button class="btn secondary" style="width:auto;" onclick="batchMove('${direction}','downstream')">批量改为下游</button></div>`;
+        container.innerHTML = `${batchBtns}<div class="table-wrap-inner"><table><thead><tr><th style="min-width:220px;">文件/操作</th>${headerRow}</tr></thead><tbody>${body}</tbody></table></div>`;
+      }
+
+      async function saveCell(inputEl) {
+        if (!currentTask) return;
+        const direction = inputEl.getAttribute("data-direction");
+        const filePath = inputEl.getAttribute("data-file");
+        const filename = filePath.split("/").pop().replace(/\.[^/.]+$/, "") + ".json";
+        const key = inputEl.getAttribute("data-key");
+        const value = inputEl.value;
+        const payload = { [key]: value || null };
+        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results/${direction}/${filename}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) toast("保存失败");
+      }
+
+      async function moveDirection(filename, fromDir, toDir) {
+        if (!currentTask) return;
+        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results/move`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            filename: filename,
+            direction_from: fromDir,
+            direction_to: toDir,
+          }),
+        });
+        if (!res.ok) return toast("方向调整失败");
+        toast(`已移动到${toDir === "upstream" ? "上游" : "下游"}`);
+        await refresh();
+      }
+
+      function toggleSelect(direction, filename, isChecked) {
+        if (!selected[direction]) selected[direction] = new Set();
+        if (isChecked) selected[direction].add(filename);
+        else selected[direction].delete(filename);
+      }
+
+      async function batchMove(fromDir, toDir) {
+        if (!currentTask) return;
+        const list = Array.from(selected[fromDir] || []);
+        if (!list.length) return toast("请先勾选合同");
+        for (const fn of list) {
+          await moveDirection(fn, fromDir, toDir);
+        }
+        selected[fromDir].clear();
+        await refresh();
+      }
+
+      async function downloadFinal(direction, fmt) {
+        if (!currentTask) return toast("请先创建任务");
+        const url = `${apiBase}/tasks/${currentTask.id}/final/${direction}/${fmt}`;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+
+      async function downloadArchive() {
+        if (!currentTask) return toast("请先创建任务");
+        const url = `${apiBase}/tasks/${currentTask.id}/final/archive`;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+
+      async function finalize(direction) {
+        if (!currentTask) return toast("请先创建任务");
+        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/finalize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ directions: [direction] }),
+        });
+        if (!res.ok) return toast("入库失败");
+        const data = await res.json();
+        document.getElementById("finalize-status").innerText = `已入库：${JSON.stringify(data.outputs[direction])}`;
+        toast("入库完成");
+      }
+    </script>
+  </body>
+</html>
