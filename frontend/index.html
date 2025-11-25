@@ -87,10 +87,51 @@
         margin-top: 12px;
         width: 100%;
         font-weight: 600;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+      .btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(95, 225, 179, 0.3);
+      }
+      .btn:active:not(:disabled) {
+        transform: translateY(0);
+      }
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .btn.loading {
+        color: transparent;
+      }
+      .btn.loading::after {
+        content: "";
+        position: absolute;
+        width: 16px;
+        height: 16px;
+        top: 50%;
+        left: 50%;
+        margin-left: -8px;
+        margin-top: -8px;
+        border: 2px solid rgba(0,0,0,0.3);
+        border-top-color: #0a0f1f;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      .btn.secondary.loading::after {
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: var(--text);
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
       }
       .btn.secondary {
         background: rgba(255, 255, 255, 0.1);
         color: var(--text);
+      }
+      .btn.secondary:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.18);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
       }
       .stack {
         display: flex;
@@ -129,26 +170,33 @@
         font-size: 12px;
       }
       table {
-        width: 100%;
         border-collapse: collapse;
         font-size: 12px;
-        min-width: 600px;
+        table-layout: fixed;
       }
       th,
       td {
         border: 1px solid var(--border);
-        padding: 6px;
+        padding: 6px 8px;
         text-align: left;
         vertical-align: top;
+        min-width: 120px;
+        max-width: 200px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
       }
       th {
         position: sticky;
         top: 0;
-        background: rgba(255, 255, 255, 0.07);
+        background: rgba(30, 40, 60, 0.95);
         backdrop-filter: blur(8px);
+        z-index: 10;
+        white-space: nowrap;
+        font-size: 11px;
       }
       td input {
         width: 100%;
+        min-width: 100px;
         border: 1px solid var(--border);
         background: rgba(255, 255, 255, 0.03);
         color: var(--text);
@@ -156,10 +204,16 @@
         padding: 4px 6px;
         font-size: 12px;
       }
+      td input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: rgba(255, 255, 255, 0.08);
+      }
       .table-wrap {
         overflow: auto;
-        max-height: 420px;
+        max-height: 450px;
         border-radius: var(--radius);
+        border: 1px solid var(--border);
       }
       .cta {
         display: flex;
@@ -176,6 +230,44 @@
         color: var(--muted);
         font-size: 12px;
       }
+      .task-item {
+        padding: 8px 10px;
+        margin: 4px 0;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border);
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .task-item:hover {
+        background: rgba(255,255,255,0.08);
+        border-color: var(--accent);
+      }
+      .task-item.active {
+        background: rgba(95,225,179,0.1);
+        border-color: var(--accent);
+      }
+      .task-item .task-name {
+        font-weight: 600;
+        color: var(--text);
+        font-size: 13px;
+      }
+      .task-item .task-meta {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+      .task-item .task-status {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        margin-left: 6px;
+      }
+      .task-item .task-status.created { background: rgba(255,255,255,0.1); color: var(--muted); }
+      .task-item .task-status.running { background: rgba(122,162,247,0.2); color: var(--accent-2); }
+      .task-item .task-status.completed { background: rgba(95,225,179,0.2); color: var(--accent); }
+      .task-item .task-status.failed { background: rgba(255,100,100,0.2); color: #ff6b6b; }
       .toast {
         position: fixed;
         right: 22px;
@@ -200,18 +292,36 @@
     </header>
     <main>
       <div class="panel">
+        <!-- Task Manager Section -->
+        <div class="section-header" style="display:flex;justify-content:space-between;align-items:center;">
+          <h2 style="margin:0;">任务管理</h2>
+          <button class="btn secondary" style="width:auto;margin:0;padding:6px 12px;" onclick="toggleTaskList()">
+            <span id="task-list-toggle">展开列表</span>
+          </button>
+        </div>
+        <div id="task-list-container" style="display:none;margin:10px 0;max-height:200px;overflow-y:auto;">
+          <div id="task-list" class="muted">加载中...</div>
+        </div>
+        <div class="status">当前任务：<span id="current-task">无</span></div>
+        <div class="cta" style="margin-top:8px;">
+          <button id="btn-reset" class="btn secondary" style="flex:1;" onclick="resetTask()">清空结果</button>
+          <button id="btn-delete" class="btn secondary" style="flex:1;background:rgba(255,100,100,0.15);color:#ff6b6b;" onclick="deleteTask()">删除任务</button>
+        </div>
+
+        <hr style="border: 1px solid var(--border); margin: 16px 0;" />
         <h2>新建任务</h2>
         <label>任务名称</label>
         <input id="task-name" type="text" placeholder="例如：2025Q1-腾讯动漫批次" />
         <label>我方主体</label>
         <input id="my-party" type="text" placeholder="例如：深圳腾讯" />
-        <button class="btn" onclick="createTask()">创建任务</button>
-        <div class="status">当前任务：<span id="current-task">无</span></div>
+        <button id="btn-create" class="btn" onclick="createTask()">创建任务</button>
+
         <hr style="border: 1px solid var(--border); margin: 16px 0;" />
         <h2>上传合同</h2>
         <input id="file-input" type="file" multiple />
-        <button class="btn secondary" onclick="uploadFiles()">上传到当前任务</button>
+        <button id="btn-upload" class="btn secondary" onclick="uploadFiles()">上传到当前任务</button>
         <div class="status muted" id="upload-status">等待上传…</div>
+
         <hr style="border: 1px solid var(--border); margin: 16px 0;" />
         <h2>运行 LLM</h2>
         <label>方向模式</label>
@@ -221,15 +331,16 @@
           <option value="downstream">强制下游</option>
         </select>
         <div class="cta">
-          <button class="btn" onclick="runTask()">运行处理</button>
-          <button class="btn secondary" onclick="refresh()">刷新结果</button>
+          <button id="btn-run" class="btn" onclick="runTask()">运行处理</button>
+          <button id="btn-refresh" class="btn secondary" onclick="refresh()">刷新结果</button>
         </div>
         <div class="status muted" id="run-status">尚未处理</div>
+
         <hr style="border: 1px solid var(--border); margin: 16px 0;" />
         <h2>入库</h2>
         <div class="cta">
-          <button class="btn secondary" onclick="finalize('upstream')">确认上游入库</button>
-          <button class="btn secondary" onclick="finalize('downstream')">确认下游入库</button>
+          <button id="btn-finalize-up" class="btn secondary" onclick="finalize('upstream')">确认上游入库</button>
+          <button id="btn-finalize-down" class="btn secondary" onclick="finalize('downstream')">确认下游入库</button>
         </div>
         <div class="status muted" id="finalize-status">未入库</div>
       </div>
@@ -279,14 +390,44 @@
     <script>
       const apiBase = "https://ip-summary.onrender.com";
       let currentTask = null;
+      let allTasks = [];
       const selected = { upstream: new Set(), downstream: new Set() };
       let statusTimer = null;
+      let taskListVisible = false;
 
-      function toast(msg) {
+      // Initialize on page load
+      window.addEventListener("DOMContentLoaded", async () => {
+        await loadTaskList();
+        // Auto-restore last task from localStorage
+        const lastTaskId = localStorage.getItem("lastTaskId");
+        if (lastTaskId && allTasks.find(t => t.id === lastTaskId)) {
+          await switchToTask(lastTaskId);
+        }
+      });
+
+      function toast(msg, duration = 2500) {
         const t = document.getElementById("toast");
         t.innerText = msg;
         t.style.display = "block";
-        setTimeout(() => (t.style.display = "none"), 2200);
+        setTimeout(() => (t.style.display = "none"), duration);
+      }
+
+      // Helper: set button loading state
+      function setLoading(btnId, loading, text = null) {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        if (loading) {
+          btn.classList.add("loading");
+          btn.disabled = true;
+          if (text) btn.setAttribute("data-original-text", btn.innerText);
+        } else {
+          btn.classList.remove("loading");
+          btn.disabled = false;
+          if (text) btn.innerText = text;
+          else if (btn.getAttribute("data-original-text")) {
+            btn.innerText = btn.getAttribute("data-original-text");
+          }
+        }
       }
 
       async function createTask() {
@@ -294,7 +435,7 @@
         const myParty = document.getElementById("my-party").value.trim();
         if (!name || !myParty) return toast("请填写任务名称与我方主体");
 
-        // Show loading state
+        setLoading("btn-create", true);
         document.getElementById("global-status").innerText = "正在创建任务...";
 
         try {
@@ -302,17 +443,25 @@
           if (!res.ok) {
             const errorText = await res.text().catch(() => "未知错误");
             document.getElementById("global-status").innerText = "创建失败";
-            return toast(`创建失败: ${res.status} - ${errorText}`);
+            toast(`创建失败: ${res.status} - ${errorText}`);
+            return;
           }
           currentTask = await res.json();
+          localStorage.setItem("lastTaskId", currentTask.id);
           document.getElementById("current-task").innerText = `${currentTask.name} (#${currentTask.id})`;
           document.getElementById("global-status").innerText = "已创建";
-          toast("任务已创建");
+          toast("✓ 任务已创建");
+          await loadTaskList();
           startPollingStatus();
+          // Clear input fields
+          document.getElementById("task-name").value = "";
+          document.getElementById("my-party").value = "";
         } catch (err) {
           document.getElementById("global-status").innerText = "网络错误";
-          toast(`网络错误: ${err.message}（后端可能正在启动，请稍后重试）`);
+          toast(`网络错误: ${err.message}（后端可能正在启动，请稍后重试）`, 4000);
           console.error("createTask error:", err);
+        } finally {
+          setLoading("btn-create", false);
         }
       }
 
@@ -320,46 +469,86 @@
         if (!currentTask) return toast("请先创建任务");
         const files = document.getElementById("file-input").files;
         if (!files.length) return toast("请选择文件");
-        const fd = new FormData();
-        for (const f of files) fd.append("files", f);
-        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/upload`, { method: "POST", body: fd });
-        if (!res.ok) return toast("上传失败");
-        const data = await res.json();
-        document.getElementById("upload-status").innerText = `已上传：${data.saved.join("、")}`;
-        toast("上传成功");
+
+        setLoading("btn-upload", true);
+        document.getElementById("upload-status").innerText = "正在上传...";
+
+        try {
+          const fd = new FormData();
+          for (const f of files) fd.append("files", f);
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}/upload`, { method: "POST", body: fd });
+          if (!res.ok) {
+            document.getElementById("upload-status").innerText = "上传失败";
+            toast("上传失败");
+            return;
+          }
+          const data = await res.json();
+          document.getElementById("upload-status").innerText = `✓ 已上传 ${data.saved.length} 个文件`;
+          toast(`✓ 上传成功：${data.saved.length} 个文件`);
+        } catch (err) {
+          document.getElementById("upload-status").innerText = "上传出错";
+          toast(`上传出错: ${err.message}`);
+        } finally {
+          setLoading("btn-upload", false);
+        }
       }
 
       async function runTask() {
         if (!currentTask) return toast("请先创建任务");
-        document.getElementById("run-status").innerText = "处理中...";
-        const mode = document.getElementById("run-mode").value;
-        const fd = new URLSearchParams();
-        fd.append("my_party", currentTask.my_party);
-        fd.append("concurrency", "3");
-        if (mode !== "auto") fd.append("force_direction", mode);
-        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/run?${fd.toString()}`, { method: "POST" });
-        if (!res.ok) {
-          document.getElementById("run-status").innerText = "处理失败";
-          return toast("处理失败");
+
+        setLoading("btn-run", true);
+        document.getElementById("run-status").innerText = "正在提交处理请求...";
+
+        try {
+          const mode = document.getElementById("run-mode").value;
+          const fd = new URLSearchParams();
+          fd.append("my_party", currentTask.my_party);
+          fd.append("concurrency", "5");
+          if (mode !== "auto") fd.append("force_direction", mode);
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}/run?${fd.toString()}`, { method: "POST" });
+          if (!res.ok) {
+            document.getElementById("run-status").innerText = "提交失败";
+            toast("处理请求提交失败");
+            return;
+          }
+          document.getElementById("run-status").innerText = "⏳ 后台处理中...（请等待）";
+          toast("✓ 已提交后台处理，请等待完成");
+          startPollingStatus();
+        } catch (err) {
+          document.getElementById("run-status").innerText = "提交出错";
+          toast(`提交出错: ${err.message}`);
+        } finally {
+          setLoading("btn-run", false);
         }
-        document.getElementById("run-status").innerText = "已提交后台处理...";
-        toast("已提交后台处理");
-        startPollingStatus();
       }
 
       async function loadResults(direction) {
         if (!currentTask) return;
-        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results?direction=${direction}`);
-        if (!res.ok) return toast("拉取结果失败");
-        const data = await res.json();
-        if (direction === "upstream") document.getElementById("up-count").innerText = `${data.count} 条`;
-        else document.getElementById("down-count").innerText = `${data.count} 条`;
-        renderTable(direction, data.items || []);
+        const countEl = document.getElementById(direction === "upstream" ? "up-count" : "down-count");
+        countEl.innerText = "加载中...";
+        try {
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results?direction=${direction}`);
+          if (!res.ok) {
+            countEl.innerText = "加载失败";
+            return toast("拉取结果失败");
+          }
+          const data = await res.json();
+          countEl.innerText = `${data.count} 条`;
+          renderTable(direction, data.items || []);
+        } catch (err) {
+          countEl.innerText = "出错";
+          toast(`加载出错: ${err.message}`);
+        }
       }
 
       async function refresh() {
-        await loadResults("upstream");
-        await loadResults("downstream");
+        setLoading("btn-refresh", true);
+        try {
+          await Promise.all([loadResults("upstream"), loadResults("downstream")]);
+          toast("✓ 结果已刷新");
+        } finally {
+          setLoading("btn-refresh", false);
+        }
       }
 
       function renderTable(direction, items) {
@@ -461,31 +650,57 @@
 
       async function finalize(direction) {
         if (!currentTask) return toast("请先创建任务");
-        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/finalize`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ directions: [direction] }),
-        });
-        if (!res.ok) return toast("入库失败");
-        const data = await res.json();
-        document.getElementById("finalize-status").innerText = `已入库：${JSON.stringify(data.outputs[direction])}`;
-        toast("入库完成");
+
+        const btnId = direction === "upstream" ? "btn-finalize-up" : "btn-finalize-down";
+        setLoading(btnId, true);
+        document.getElementById("finalize-status").innerText = `正在入库${direction === "upstream" ? "上游" : "下游"}...`;
+
+        try {
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}/finalize`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ directions: [direction] }),
+          });
+          if (!res.ok) {
+            document.getElementById("finalize-status").innerText = "入库失败";
+            toast("入库失败");
+            return;
+          }
+          const data = await res.json();
+          const dirLabel = direction === "upstream" ? "上游" : "下游";
+          document.getElementById("finalize-status").innerText = `✓ ${dirLabel}已入库`;
+          toast(`✓ ${dirLabel}入库完成`);
+        } catch (err) {
+          document.getElementById("finalize-status").innerText = "入库出错";
+          toast(`入库出错: ${err.message}`);
+        } finally {
+          setLoading(btnId, false);
+        }
       }
 
       async function pollStatusOnce() {
         if (!currentTask) return;
-        const res = await fetch(`${apiBase}/tasks/${currentTask.id}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        document.getElementById("global-status").innerText = `${data.status}${data.message ? "：" + data.message : ""}`;
-        if (data.summary) {
-          const up = data.summary.upstream || 0;
-          const down = data.summary.downstream || 0;
-          document.getElementById("run-status").innerText = `完成，上游${up}，下游${down}`;
-        }
-        if (data.status === "completed") {
-          clearInterval(statusTimer);
-          await refresh();
+        try {
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}`);
+          if (!res.ok) return;
+          const data = await res.json();
+          const statusText = data.status === "running" ? "⏳ " + data.status : data.status;
+          document.getElementById("global-status").innerText = `${statusText}${data.message ? "：" + data.message : ""}`;
+          if (data.summary) {
+            const up = data.summary.upstream || 0;
+            const down = data.summary.downstream || 0;
+            document.getElementById("run-status").innerText = `✓ 完成，上游 ${up} 条，下游 ${down} 条`;
+          }
+          if (data.status === "completed") {
+            clearInterval(statusTimer);
+            toast("✓ LLM 处理完成！");
+            await refresh();
+          } else if (data.status === "failed") {
+            clearInterval(statusTimer);
+            toast("处理失败：" + (data.message || "未知错误"), 4000);
+          }
+        } catch (err) {
+          // Silently ignore polling errors
         }
       }
 
@@ -493,6 +708,156 @@
         if (statusTimer) clearInterval(statusTimer);
         pollStatusOnce();
         statusTimer = setInterval(pollStatusOnce, 4000);
+      }
+
+      // ========== Task Management Functions ==========
+
+      async function loadTaskList() {
+        try {
+          const res = await fetch(`${apiBase}/tasks`);
+          if (!res.ok) return;
+          allTasks = await res.json();
+          // Sort by created_at descending (newest first)
+          allTasks.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          renderTaskList();
+        } catch (err) {
+          console.error("loadTaskList error:", err);
+        }
+      }
+
+      function renderTaskList() {
+        const container = document.getElementById("task-list");
+        if (!allTasks.length) {
+          container.innerHTML = '<div class="muted">暂无任务</div>';
+          return;
+        }
+        const html = allTasks.map(t => {
+          const isActive = currentTask && currentTask.id === t.id;
+          const date = new Date(t.created_at).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+          const statusLabels = { created: "待处理", running: "处理中", completed: "已完成", failed: "失败" };
+          return `
+            <div class="task-item ${isActive ? 'active' : ''}" onclick="switchToTask('${t.id}')">
+              <div class="task-name">${t.name} <span class="task-status ${t.status}">${statusLabels[t.status] || t.status}</span></div>
+              <div class="task-meta">#${t.id} · ${t.my_party} · ${date}</div>
+            </div>
+          `;
+        }).join("");
+        container.innerHTML = html;
+      }
+
+      function toggleTaskList() {
+        taskListVisible = !taskListVisible;
+        const container = document.getElementById("task-list-container");
+        const toggleText = document.getElementById("task-list-toggle");
+        if (taskListVisible) {
+          container.style.display = "block";
+          toggleText.innerText = "收起列表";
+          loadTaskList();
+        } else {
+          container.style.display = "none";
+          toggleText.innerText = "展开列表";
+        }
+      }
+
+      async function switchToTask(taskId) {
+        try {
+          const res = await fetch(`${apiBase}/tasks/${taskId}`);
+          if (!res.ok) {
+            toast("任务不存在或已删除");
+            await loadTaskList();
+            return;
+          }
+          currentTask = await res.json();
+          localStorage.setItem("lastTaskId", currentTask.id);
+          document.getElementById("current-task").innerText = `${currentTask.name} (#${currentTask.id})`;
+          document.getElementById("global-status").innerText = currentTask.status + (currentTask.message ? "：" + currentTask.message : "");
+
+          // Update run status
+          if (currentTask.summary) {
+            const up = currentTask.summary.upstream || 0;
+            const down = currentTask.summary.downstream || 0;
+            document.getElementById("run-status").innerText = `✓ 完成，上游 ${up} 条，下游 ${down} 条`;
+          } else {
+            document.getElementById("run-status").innerText = currentTask.status === "created" ? "尚未处理" : "处理中...";
+          }
+
+          // Reset other status displays
+          document.getElementById("upload-status").innerText = "等待上传…";
+          document.getElementById("finalize-status").innerText = "未入库";
+
+          // Refresh task list to update active state
+          renderTaskList();
+
+          // Load results if completed
+          if (currentTask.status === "completed") {
+            await refresh();
+          } else {
+            // Clear tables
+            document.getElementById("upstream-table").innerHTML = '<div class="muted">暂无数据</div>';
+            document.getElementById("downstream-table").innerHTML = '<div class="muted">暂无数据</div>';
+            document.getElementById("up-count").innerText = "0 条";
+            document.getElementById("down-count").innerText = "0 条";
+          }
+
+          // Start polling if running
+          if (currentTask.status === "running") {
+            startPollingStatus();
+          }
+
+          toast(`✓ 已切换到任务: ${currentTask.name}`);
+        } catch (err) {
+          toast(`切换任务失败: ${err.message}`);
+        }
+      }
+
+      async function resetTask() {
+        if (!currentTask) return toast("请先选择任务");
+        if (!confirm(`确定要清空任务 "${currentTask.name}" 的所有处理结果吗？\n\n已上传的合同文件会保留，可以重新运行处理。`)) return;
+
+        setLoading("btn-reset", true);
+        try {
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}/reset`, { method: "POST" });
+          if (!res.ok) {
+            toast("清空失败");
+            return;
+          }
+          // Refresh current task
+          await switchToTask(currentTask.id);
+          toast("✓ 已清空结果，可重新处理");
+        } catch (err) {
+          toast(`清空失败: ${err.message}`);
+        } finally {
+          setLoading("btn-reset", false);
+        }
+      }
+
+      async function deleteTask() {
+        if (!currentTask) return toast("请先选择任务");
+        if (!confirm(`确定要删除任务 "${currentTask.name}" 吗？\n\n此操作不可恢复，所有文件和结果都将被删除。`)) return;
+
+        setLoading("btn-delete", true);
+        try {
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}`, { method: "DELETE" });
+          if (!res.ok) {
+            toast("删除失败");
+            return;
+          }
+          toast(`✓ 已删除任务: ${currentTask.name}`);
+          localStorage.removeItem("lastTaskId");
+          currentTask = null;
+          document.getElementById("current-task").innerText = "无";
+          document.getElementById("global-status").innerText = "未开始";
+          document.getElementById("run-status").innerText = "尚未处理";
+          document.getElementById("upstream-table").innerHTML = '<div class="muted">暂无数据</div>';
+          document.getElementById("downstream-table").innerHTML = '<div class="muted">暂无数据</div>';
+          document.getElementById("up-count").innerText = "0 条";
+          document.getElementById("down-count").innerText = "0 条";
+          await loadTaskList();
+        } catch (err) {
+          toast(`删除失败: ${err.message}`);
+        } finally {
+          setLoading("btn-delete", false);
+        }
       }
     </script>
   </body>

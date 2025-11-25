@@ -269,6 +269,35 @@ def delete_task(task_id: str):
     return {"status": "ok"}
 
 
+@app.post("/tasks/{task_id}/reset")
+def reset_task(task_id: str):
+    """Clear intermediate and final results, keep input files, allow re-processing."""
+    try:
+        task = task_manager.get_task(task_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found")
+    # Clear intermediate results
+    intermediate_dir = Path(task.intermediate_dir)
+    if intermediate_dir.exists():
+        shutil.rmtree(intermediate_dir)
+    intermediate_dir.mkdir(parents=True, exist_ok=True)
+    (intermediate_dir / "upstream").mkdir(exist_ok=True)
+    (intermediate_dir / "downstream").mkdir(exist_ok=True)
+    # Clear final outputs
+    final_dir = Path(task.final_dir)
+    if final_dir.exists():
+        shutil.rmtree(final_dir)
+    final_dir.mkdir(parents=True, exist_ok=True)
+    # Reset task status
+    task_manager.update_status(task_id, "created", None)
+    # Clear summary
+    data = task_manager._load_index()
+    if task_id in data:
+        data[task_id].summary = None
+        task_manager._save_index(data)
+    return {"status": "ok", "message": "Task reset, ready for re-processing"}
+
+
 # NOTE: Static files are served by Vercel, not by this API server.
 # Do NOT mount StaticFiles at "/" as it will override API routes.
 # If you need to serve frontend locally for testing, use a separate port or:
