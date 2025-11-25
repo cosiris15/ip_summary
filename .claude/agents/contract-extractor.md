@@ -525,8 +525,9 @@ This agent relies on the following skills and knowledge:
 ---
 
 ## Version Info
-- Version: 2.0 (Hybrid AI + Rules Architecture)
+- Version: 2.1 (Hybrid AI + Rules Architecture)
 - Created: 2025-11-14
 - Updated: 2025-11-15 (Added AI extraction for 4 complex fields)
+- Updated: 2025-11-25 (Code upgrade and optimization)
 - Model: sonnet
 - Extraction Method: Agent AI (转授权方名称, 排他方名称, 是否独家, 结算类型) + Rules Script (其他字段)

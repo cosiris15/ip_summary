@@ -269,7 +269,9 @@ def delete_task(task_id: str):
     return {"status": "ok"}
 
 
-# Serve static front-end
-FRONTEND_DIR = Path("frontend")
-if FRONTEND_DIR.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
+# NOTE: Static files are served by Vercel, not by this API server.
+# Do NOT mount StaticFiles at "/" as it will override API routes.
+# If you need to serve frontend locally for testing, use a separate port or:
+# FRONTEND_DIR = Path("frontend")
+# if FRONTEND_DIR.exists():
+#     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

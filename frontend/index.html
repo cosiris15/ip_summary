@@ -293,13 +293,27 @@
         const name = document.getElementById("task-name").value.trim();
         const myParty = document.getElementById("my-party").value.trim();
         if (!name || !myParty) return toast("请填写任务名称与我方主体");
-        const res = await fetch(`${apiBase}/tasks?name=${encodeURIComponent(name)}&my_party=${encodeURIComponent(myParty)}`, { method: "POST" });
-        if (!res.ok) return toast("创建失败");
-        currentTask = await res.json();
-        document.getElementById("current-task").innerText = `${currentTask.name} (#${currentTask.id})`;
-        document.getElementById("global-status").innerText = "已创建";
-        toast("任务已创建");
-        startPollingStatus();
+
+        // Show loading state
+        document.getElementById("global-status").innerText = "正在创建任务...";
+
+        try {
+          const res = await fetch(`${apiBase}/tasks?name=${encodeURIComponent(name)}&my_party=${encodeURIComponent(myParty)}`, { method: "POST" });
+          if (!res.ok) {
+            const errorText = await res.text().catch(() => "未知错误");
+            document.getElementById("global-status").innerText = "创建失败";
+            return toast(`创建失败: ${res.status} - ${errorText}`);
+          }
+          currentTask = await res.json();
+          document.getElementById("current-task").innerText = `${currentTask.name} (#${currentTask.id})`;
+          document.getElementById("global-status").innerText = "已创建";
+          toast("任务已创建");
+          startPollingStatus();
+        } catch (err) {
+          document.getElementById("global-status").innerText = "网络错误";
+          toast(`网络错误: ${err.message}（后端可能正在启动，请稍后重试）`);
+          console.error("createTask error:", err);
+        }
       }
 
       async function uploadFiles() {

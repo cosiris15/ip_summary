@@ -438,6 +438,7 @@ See `工具/excel_template_说明.md` for:
 ---
 
 ## Version Info
-- Version: 1.0
+- Version: 1.1
 - Created: 2025-11-14
+- Updated: 2025-11-25 (Code upgrade and optimization)
 - Model: sonnet
