@@ -35,7 +35,8 @@ class TaskManager:
         return {k: Task(**v) for k, v in data.items()}
 
     def _save_index(self, data: Dict[str, Task]) -> None:
-        payload = {k: v.model_dump() for k, v in data.items()}
+        # Use mode="json" to ensure Path objects are serialized as strings
+        payload = {k: v.model_dump(mode="json") for k, v in data.items()}
         self.index_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def create_task(self, name: str, my_party: str) -> Task:

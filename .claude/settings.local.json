@@ -23,7 +23,8 @@
       "Bash(pip3 install:*)",
       "Bash(find:*)",
       "Bash(/dev/null)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "WebFetch(domain:ip-summary.onrender.com)"
     ],
     "deny": [
       "Bash(rm -rf /:*)",
