@@ -280,6 +280,150 @@
         box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
         display: none;
       }
+      /* Tab styles */
+      .tab-container {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 16px;
+      }
+      .tab-btn {
+        padding: 12px 24px;
+        background: transparent;
+        border: none;
+        border-bottom: 2px solid transparent;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .tab-btn:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .tab-btn.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      /* Uploaded files list */
+      .file-list {
+        max-height: 150px;
+        overflow-y: auto;
+        margin: 8px 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .file-list-item {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .file-list-item:last-child {
+        border-bottom: none;
+      }
+      .file-list-item .file-name {
+        color: var(--text);
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .file-list-item .file-size {
+        color: var(--muted);
+        font-size: 11px;
+        margin-left: 8px;
+      }
+      /* Modal for full content */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .modal-overlay.show {
+        display: flex;
+      }
+      .modal-content {
+        background: #1a1f2e;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        max-width: 80vw;
+        max-height: 80vh;
+        overflow: auto;
+        min-width: 400px;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .modal-header h3 {
+        margin: 0;
+        font-size: 16px;
+        color: var(--accent);
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+      }
+      .modal-close:hover {
+        color: var(--text);
+      }
+      .modal-body textarea {
+        width: 100%;
+        min-height: 200px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        padding: 12px;
+        font-size: 14px;
+        resize: vertical;
+        font-family: inherit;
+      }
+      .modal-body textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .modal-footer {
+        margin-top: 16px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+      /* Clickable cell hint */
+      td input {
+        cursor: pointer;
+      }
+      td input:hover {
+        border-color: var(--accent);
+      }
     </style>
   </head>
   <body>
@@ -321,6 +465,13 @@
         <input id="file-input" type="file" multiple />
         <button id="btn-upload" class="btn secondary" onclick="uploadFiles()">上传到当前任务</button>
         <div class="status muted" id="upload-status">等待上传…</div>
+        <div id="uploaded-files-section" style="margin-top: 10px; display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="muted">已上传文件 (<span id="uploaded-count">0</span>)</span>
+            <button class="btn secondary" style="width: auto; margin: 0; padding: 4px 10px; font-size: 11px;" onclick="loadUploadedFiles()">刷新</button>
+          </div>
+          <div class="file-list" id="uploaded-files-list"></div>
+        </div>
 
         <hr style="border: 1px solid var(--border); margin: 16px 0;" />
         <h2>运行 LLM</h2>
@@ -337,51 +488,78 @@
         <div class="status muted" id="run-status">尚未处理</div>
 
         <hr style="border: 1px solid var(--border); margin: 16px 0;" />
-        <h2>入库</h2>
-        <div class="cta">
-          <button id="btn-finalize-up" class="btn secondary" onclick="finalize('upstream')">确认上游入库</button>
-          <button id="btn-finalize-down" class="btn secondary" onclick="finalize('downstream')">确认下游入库</button>
-        </div>
-        <div class="status muted" id="finalize-status">未入库</div>
+        <div class="status muted" id="finalize-status">入库状态：未入库</div>
       </div>
 
       <div class="panel" style="grid-column: 2 / span 1;">
         <div class="board-header">
           <div>
             <h2 style="margin: 0;">处理结果</h2>
-            <div class="muted">上游/下游分栏，单元格可直接编辑并保存</div>
+            <div class="muted">双击单元格可查看/编辑完整内容</div>
           </div>
-          <div class="inline">
-            <button class="btn secondary" style="width: auto;" onclick="loadResults('upstream')">刷新上游</button>
-            <button class="btn secondary" style="width: auto;" onclick="loadResults('downstream')">刷新下游</button>
+          <button class="btn secondary" style="width: auto;" onclick="refresh()">刷新全部</button>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-container">
+          <button class="tab-btn active" data-tab="upstream" onclick="switchTab('upstream')">
+            上游合同 <span class="badge" id="up-count">0 条</span>
+          </button>
+          <button class="tab-btn" data-tab="downstream" onclick="switchTab('downstream')">
+            下游合同 <span class="badge" id="down-count">0 条</span>
+          </button>
+        </div>
+
+        <!-- Upstream Tab Content -->
+        <div class="tab-content active" id="tab-upstream">
+          <section class="board">
+            <div class="table-wrap" id="upstream-table" style="max-height: 55vh;"></div>
+          </section>
+          <div style="height: 14px;"></div>
+          <div class="board-header">
+            <div class="inline">
+              <button id="btn-finalize-up" class="btn secondary" style="width: auto;" onclick="finalize('upstream')">确认入库</button>
+              <button class="btn secondary" style="width: auto;" onclick="downloadFinal('upstream','csv')">下载CSV</button>
+              <button class="btn secondary" style="width: auto;" onclick="downloadFinal('upstream','xlsx')">下载Excel</button>
+            </div>
           </div>
         </div>
-        <section class="board">
+
+        <!-- Downstream Tab Content -->
+        <div class="tab-content" id="tab-downstream">
+          <section class="board">
+            <div class="table-wrap" id="downstream-table" style="max-height: 55vh;"></div>
+          </section>
+          <div style="height: 14px;"></div>
           <div class="board-header">
-            <strong>上游合同</strong>
-            <span class="badge" id="up-count">0 条</span>
+            <div class="inline">
+              <button id="btn-finalize-down" class="btn secondary" style="width: auto;" onclick="finalize('downstream')">确认入库</button>
+              <button class="btn secondary" style="width: auto;" onclick="downloadFinal('downstream','csv')">下载CSV</button>
+              <button class="btn secondary" style="width: auto;" onclick="downloadFinal('downstream','xlsx')">下载Excel</button>
+            </div>
           </div>
-          <div class="table-wrap" id="upstream-table"></div>
-        </section>
-        <div style="height: 12px;"></div>
-        <section class="board">
-          <div class="board-header">
-            <strong>下游合同</strong>
-            <span class="badge" id="down-count">0 条</span>
-          </div>
-          <div class="table-wrap" id="downstream-table"></div>
-        </section>
+        </div>
+
         <div style="height: 14px;"></div>
-        <div class="board-header">
-          <div class="inline">
-            <button class="btn secondary" style="width: auto;" onclick="downloadFinal('upstream','csv')">下载上游CSV</button>
-            <button class="btn secondary" style="width: auto;" onclick="downloadFinal('upstream','xlsx')">下载上游Excel</button>
-          </div>
-          <div class="inline">
-            <button class="btn secondary" style="width: auto;" onclick="downloadFinal('downstream','csv')">下载下游CSV</button>
-            <button class="btn secondary" style="width: auto;" onclick="downloadFinal('downstream','xlsx')">下载下游Excel</button>
-          </div>
+        <div class="board-header" style="justify-content: flex-end;">
           <button class="btn secondary" style="width: auto;" onclick="downloadArchive()">打包下载全部</button>
+        </div>
+      </div>
+
+      <!-- Modal for full content view -->
+      <div class="modal-overlay" id="cell-modal" onclick="closeCellModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h3 id="modal-field-name">字段名</h3>
+            <button class="modal-close" onclick="closeCellModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <textarea id="modal-textarea" placeholder="内容为空"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button class="btn secondary" style="width: auto; margin: 0;" onclick="closeCellModal()">取消</button>
+            <button class="btn" style="width: auto; margin: 0;" onclick="saveModalContent()">保存</button>
+          </div>
         </div>
       </div>
     </main>
@@ -394,6 +572,8 @@
       const selected = { upstream: new Set(), downstream: new Set() };
       let statusTimer = null;
       let taskListVisible = false;
+      let activeTab = "upstream";
+      let currentModalCell = null; // Stores info about the cell being edited in modal
 
       // Initialize on page load
       window.addEventListener("DOMContentLoaded", async () => {
@@ -483,13 +663,49 @@
             return;
           }
           const data = await res.json();
-          document.getElementById("upload-status").innerText = `✓ 已上传 ${data.saved.length} 个文件`;
+          document.getElementById("upload-status").innerText = `✓ 本次上传 ${data.saved.length} 个文件`;
           toast(`✓ 上传成功：${data.saved.length} 个文件`);
+          // Clear file input
+          document.getElementById("file-input").value = "";
+          // Refresh uploaded files list
+          await loadUploadedFiles();
         } catch (err) {
           document.getElementById("upload-status").innerText = "上传出错";
           toast(`上传出错: ${err.message}`);
         } finally {
           setLoading("btn-upload", false);
+        }
+      }
+
+      // Load and display uploaded files for current task
+      async function loadUploadedFiles() {
+        if (!currentTask) return;
+        const section = document.getElementById("uploaded-files-section");
+        const listEl = document.getElementById("uploaded-files-list");
+        const countEl = document.getElementById("uploaded-count");
+
+        try {
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}/files`);
+          if (!res.ok) return;
+          const data = await res.json();
+
+          if (data.count > 0) {
+            section.style.display = "block";
+            countEl.innerText = data.count;
+            listEl.innerHTML = data.files.map(f => {
+              const size = f.size < 1024 ? `${f.size} B` :
+                           f.size < 1024 * 1024 ? `${(f.size / 1024).toFixed(1)} KB` :
+                           `${(f.size / (1024 * 1024)).toFixed(1)} MB`;
+              return `<div class="file-list-item">
+                <span class="file-name" title="${f.name}">${f.name}</span>
+                <span class="file-size">${size}</span>
+              </div>`;
+            }).join("");
+          } else {
+            section.style.display = "none";
+          }
+        } catch (err) {
+          console.error("loadUploadedFiles error:", err);
         }
       }
 
@@ -554,19 +770,30 @@
       function renderTable(direction, items) {
         const container = document.getElementById(`${direction}-table`);
         if (!items.length) {
-          container.innerHTML = '<div class="muted">暂无数据</div>';
+          container.innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
           return;
         }
         const firstFields = items[0].fields;
         const headers = Object.keys(firstFields);
-        const headerRow = headers.map((h) => `<th>${h}</th>`).join("");
+        const headerRow = headers.map((h) => `<th title="${h}">${h}</th>`).join("");
         let body = "";
         items.forEach((item, idx) => {
           const jsonName = item.contract_path.split("/").pop().replace(/\.[^/.]+$/, "") + ".json";
           const rowInputs = headers
             .map(
-              (h) =>
-                `<td><input data-direction="${direction}" data-file="${item.contract_path}" data-key="${h.replace(/"/g, "&quot;")}" value="${(item.fields[h] ?? "").toString().replace(/"/g, "&quot;")}" onblur="saveCell(this)" /></td>`
+              (h) => {
+                const val = (item.fields[h] ?? "").toString().replace(/"/g, "&quot;");
+                return `<td><input
+                  data-direction="${direction}"
+                  data-file="${item.contract_path}"
+                  data-key="${h.replace(/"/g, "&quot;")}"
+                  value="${val}"
+                  onblur="saveCell(this)"
+                  ondblclick="openCellModal(this)"
+                  title="双击查看/编辑完整内容"
+                  readonly
+                /></td>`;
+              }
             )
             .join("");
           const actions = `<div class="inline"><button class="btn secondary" style="width:auto;padding:6px 10px;" onclick="moveDirection('${jsonName}','${direction}','${direction==='upstream'?'downstream':'upstream'}')">改为${direction === 'upstream' ? '下游' : '上游'}</button></div>`;
@@ -576,6 +803,78 @@
         const batchBtns = `<div class="inline" style="margin:8px 0;"><button class="btn secondary" style="width:auto;" onclick="batchMove('${direction}','upstream')">批量改为上游</button><button class="btn secondary" style="width:auto;" onclick="batchMove('${direction}','downstream')">批量改为下游</button></div>`;
         container.innerHTML = `${batchBtns}<div class="table-wrap-inner"><table><thead><tr><th style="min-width:220px;">文件/操作</th>${headerRow}</tr></thead><tbody>${body}</tbody></table></div>`;
       }
+
+      // Tab switching function
+      function switchTab(tab) {
+        activeTab = tab;
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.classList.toggle('active', content.id === `tab-${tab}`);
+        });
+      }
+
+      // Open modal to view/edit full cell content
+      function openCellModal(inputEl) {
+        const direction = inputEl.getAttribute("data-direction");
+        const filePath = inputEl.getAttribute("data-file");
+        const key = inputEl.getAttribute("data-key");
+        const value = inputEl.value;
+
+        currentModalCell = { inputEl, direction, filePath, key };
+
+        document.getElementById("modal-field-name").innerText = key;
+        document.getElementById("modal-textarea").value = value;
+        document.getElementById("cell-modal").classList.add("show");
+        document.getElementById("modal-textarea").focus();
+      }
+
+      // Close modal
+      function closeCellModal(event) {
+        if (event && event.target !== event.currentTarget) return;
+        document.getElementById("cell-modal").classList.remove("show");
+        currentModalCell = null;
+      }
+
+      // Save content from modal
+      async function saveModalContent() {
+        if (!currentModalCell) return;
+        const { inputEl, direction, filePath, key } = currentModalCell;
+        const newValue = document.getElementById("modal-textarea").value;
+
+        // Update the input field
+        inputEl.value = newValue;
+
+        // Save to backend
+        const filename = filePath.split("/").pop().replace(/\.[^/.]+$/, "") + ".json";
+        const payload = { [key]: newValue || null };
+        try {
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results/${direction}/${filename}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) {
+            toast("保存失败");
+          } else {
+            toast("✓ 已保存");
+          }
+        } catch (err) {
+          toast(`保存出错: ${err.message}`);
+        }
+
+        closeCellModal();
+      }
+
+      // Handle Escape key to close modal
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.getElementById("cell-modal").classList.contains("show")) {
+          closeCellModal();
+        }
+      });
 
       async function saveCell(inputEl) {
         if (!currentTask) return;
@@ -783,7 +1082,10 @@
 
           // Reset other status displays
           document.getElementById("upload-status").innerText = "等待上传…";
-          document.getElementById("finalize-status").innerText = "未入库";
+          document.getElementById("finalize-status").innerText = "入库状态：未入库";
+
+          // Load uploaded files
+          await loadUploadedFiles();
 
           // Refresh task list to update active state
           renderTaskList();
@@ -793,8 +1095,8 @@
             await refresh();
           } else {
             // Clear tables
-            document.getElementById("upstream-table").innerHTML = '<div class="muted">暂无数据</div>';
-            document.getElementById("downstream-table").innerHTML = '<div class="muted">暂无数据</div>';
+            document.getElementById("upstream-table").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
+            document.getElementById("downstream-table").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
             document.getElementById("up-count").innerText = "0 条";
             document.getElementById("down-count").innerText = "0 条";
           }
@@ -848,8 +1150,11 @@
           document.getElementById("current-task").innerText = "无";
           document.getElementById("global-status").innerText = "未开始";
           document.getElementById("run-status").innerText = "尚未处理";
-          document.getElementById("upstream-table").innerHTML = '<div class="muted">暂无数据</div>';
-          document.getElementById("downstream-table").innerHTML = '<div class="muted">暂无数据</div>';
+          document.getElementById("finalize-status").innerText = "入库状态：未入库";
+          document.getElementById("upload-status").innerText = "等待上传…";
+          document.getElementById("uploaded-files-section").style.display = "none";
+          document.getElementById("upstream-table").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
+          document.getElementById("downstream-table").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
           document.getElementById("up-count").innerText = "0 条";
           document.getElementById("down-count").innerText = "0 条";
           await loadTaskList();

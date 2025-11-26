@@ -93,6 +93,29 @@ async def upload_files(task_id: str, files: List[UploadFile] = File(...)):
     return {"saved": saved, "input_dir": str(task.input_dir)}
 
 
+@app.get("/tasks/{task_id}/files")
+def list_uploaded_files(task_id: str):
+    """List all uploaded files for a task."""
+    try:
+        task = task_manager.get_task(task_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    input_dir = Path(task.input_dir)
+    if not input_dir.exists():
+        return {"files": [], "count": 0}
+
+    files = []
+    for f in sorted(input_dir.iterdir()):
+        if f.is_file():
+            files.append({
+                "name": f.name,
+                "size": f.stat().st_size,
+                "modified": f.stat().st_mtime,
+            })
+    return {"files": files, "count": len(files)}
+
+
 @app.post("/tasks/{task_id}/run")
 async def run_task(
     task_id: str,
