@@ -8,6 +8,8 @@ import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import pandas as pd
+
 ROOT = Path(__file__).parent.resolve()
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
@@ -20,7 +22,7 @@ from fastapi.staticfiles import StaticFiles
 
 from ip_summary.config import Settings, load_settings
 from ip_summary.pipeline import aggregate_to_outputs, load_headers, process_contracts
-from ip_summary.storage import load_intermediate_folder
+from ip_summary.storage import load_intermediate_folder, aggregate_results
 from ip_summary.tasks import Task, TaskManager
 
 DEFAULT_CONFIG_PATH = Path("config/deepseek_config.yaml")
@@ -220,6 +222,132 @@ def move_direction(task_id: str, filename: str, direction_from: str, direction_t
     dst.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     src.unlink(missing_ok=True)
     return {"status": "ok", "message": f"moved to {direction_to}"}
+
+
+@app.get("/tasks/{task_id}/results/{direction}/export")
+def export_for_editing(task_id: str, direction: str):
+    """Export current results as Excel for editing."""
+    if direction not in {"upstream", "downstream"}:
+        raise HTTPException(status_code=400, detail="direction must be upstream or downstream")
+    try:
+        task = task_manager.get_task(task_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Get headers for this direction
+    headers = headers_def.upstream_headers if direction == "upstream" else headers_def.downstream_headers
+
+    # Aggregate results into DataFrame
+    intermediate_dir = Path(task.intermediate_dir)
+    df = aggregate_results(intermediate_dir, headers, direction)
+
+    if df.empty:
+        raise HTTPException(status_code=404, detail="No results to export")
+
+    # Write to temp file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        df.to_excel(tmp.name, index=False)
+        return FileResponse(
+            path=tmp.name,
+            filename=f"{task.id}_{direction}_edit.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+
+@app.post("/tasks/{task_id}/results/{direction}/import")
+async def import_from_excel(task_id: str, direction: str, file: UploadFile = File(...)):
+    """Import edited Excel to update results."""
+    if direction not in {"upstream", "downstream"}:
+        raise HTTPException(status_code=400, detail="direction must be upstream or downstream")
+    try:
+        task = task_manager.get_task(task_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    # Read uploaded Excel
+    content = await file.read()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        df = pd.read_excel(tmp_path)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read Excel: {str(e)}")
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
+    if "合同源文件" not in df.columns:
+        raise HTTPException(status_code=400, detail="Excel must contain '合同源文件' column")
+
+    # Get headers for this direction
+    headers = headers_def.upstream_headers if direction == "upstream" else headers_def.downstream_headers
+
+    # Load existing intermediate files to preserve metadata
+    intermediate_dir = Path(task.intermediate_dir) / direction
+    intermediate_dir.mkdir(parents=True, exist_ok=True)
+
+    updated_count = 0
+    created_count = 0
+
+    for _, row in df.iterrows():
+        contract_path = row.get("合同源文件", "")
+        if not contract_path:
+            continue
+
+        # Derive JSON filename from contract path
+        contract_stem = Path(contract_path).stem
+        json_filename = f"{contract_stem}.json"
+        json_path = intermediate_dir / json_filename
+
+        # Extract field values from Excel row
+        new_fields = {}
+        for h in headers:
+            if h in df.columns:
+                val = row.get(h)
+                # Handle NaN values
+                if pd.isna(val):
+                    new_fields[h] = None
+                else:
+                    new_fields[h] = str(val) if val is not None else None
+
+        if json_path.exists():
+            # Update existing file
+            with json_path.open("r", encoding="utf-8") as f:
+                payload = json.load(f)
+            payload["fields"].update(new_fields)
+            # Ensure direction matches
+            payload["direction"] = direction
+            with json_path.open("w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            updated_count += 1
+        else:
+            # Create new file with minimal structure
+            payload = {
+                "contract_path": contract_path,
+                "direction": direction,
+                "my_party": task.my_party,
+                "fields": new_fields,
+                "raw_extraction": None,
+                "classification": {
+                    "direction": direction,
+                    "confidence": 0.0,
+                    "reason": "Imported from Excel",
+                    "raw_response": ""
+                },
+                "prompt_version": "excel_import",
+                "notes": "Imported from user-edited Excel"
+            }
+            with json_path.open("w", encoding="utf-8") as f:
+                json.dump(payload, f, ensure_ascii=False, indent=2)
+            created_count += 1
+
+    return {
+        "status": "ok",
+        "updated": updated_count,
+        "created": created_count,
+        "message": f"Updated {updated_count} records, created {created_count} new records"
+    }
 
 
 @app.post("/tasks/{task_id}/finalize")

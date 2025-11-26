@@ -417,12 +417,138 @@
         justify-content: flex-end;
         gap: 10px;
       }
-      /* Clickable cell hint */
-      td input {
+      /* Contract Card Styles */
+      .card-list {
+        max-height: 60vh;
+        overflow-y: auto;
+        padding-right: 8px;
+      }
+      .contract-card {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 12px;
+        overflow: hidden;
+      }
+      .contract-card:hover {
+        border-color: rgba(255, 255, 255, 0.15);
+      }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid var(--border);
         cursor: pointer;
       }
-      td input:hover {
+      .card-header:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .card-title {
+        font-weight: 600;
+        color: var(--accent);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .card-toggle {
+        color: var(--muted);
+        font-size: 12px;
+        transition: transform 0.2s;
+      }
+      .contract-card.collapsed .card-toggle {
+        transform: rotate(-90deg);
+      }
+      .card-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .card-body {
+        padding: 16px;
+        display: block;
+      }
+      .contract-card.collapsed .card-body {
+        display: none;
+      }
+      .field-row {
+        display: flex;
+        margin-bottom: 10px;
+        align-items: flex-start;
+      }
+      .field-label {
+        min-width: 140px;
+        max-width: 140px;
+        font-size: 12px;
+        color: var(--muted);
+        padding-top: 6px;
+        flex-shrink: 0;
+      }
+      .field-value {
+        flex: 1;
+        font-size: 13px;
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 6px 10px;
+        min-height: 32px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        word-break: break-word;
+        white-space: pre-wrap;
+      }
+      .field-value:hover {
         border-color: var(--accent);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .field-value:empty::before {
+        content: "(空)";
+        color: var(--muted);
+        font-style: italic;
+      }
+      .field-value.editing {
+        padding: 0;
+        background: transparent;
+        border: none;
+      }
+      .field-value.editing textarea {
+        width: 100%;
+        min-height: 60px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--accent);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 6px 10px;
+        font-size: 13px;
+        resize: vertical;
+        font-family: inherit;
+      }
+      .field-value.editing textarea:focus {
+        outline: none;
+      }
+      /* Hidden file input */
+      .hidden-input {
+        display: none;
+      }
+      /* Toolbar styles */
+      .toolbar {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+      }
+      .toolbar .btn {
+        margin: 0;
+        width: auto;
+        padding: 8px 14px;
+        font-size: 13px;
       }
     </style>
   </head>
@@ -495,7 +621,7 @@
         <div class="board-header">
           <div>
             <h2 style="margin: 0;">处理结果</h2>
-            <div class="muted">双击单元格可查看/编辑完整内容</div>
+            <div class="muted">点击字段可编辑 · 建议复杂修改导出Excel后本地编辑</div>
           </div>
           <button class="btn secondary" style="width: auto;" onclick="refresh()">刷新全部</button>
         </div>
@@ -512,31 +638,35 @@
 
         <!-- Upstream Tab Content -->
         <div class="tab-content active" id="tab-upstream">
-          <section class="board">
-            <div class="table-wrap" id="upstream-table" style="max-height: 55vh;"></div>
-          </section>
-          <div style="height: 14px;"></div>
-          <div class="board-header">
-            <div class="inline">
-              <button id="btn-finalize-up" class="btn secondary" style="width: auto;" onclick="finalize('upstream')">确认入库</button>
-              <button class="btn secondary" style="width: auto;" onclick="downloadFinal('upstream','csv')">下载CSV</button>
-              <button class="btn secondary" style="width: auto;" onclick="downloadFinal('upstream','xlsx')">下载Excel</button>
-            </div>
+          <!-- Toolbar -->
+          <div class="toolbar">
+            <button class="btn secondary" onclick="exportForEditing('upstream')">导出Excel编辑</button>
+            <button class="btn secondary" onclick="triggerImport('upstream')">上传修改Excel</button>
+            <input type="file" id="import-upstream" class="hidden-input" accept=".xlsx,.xls" onchange="importFromExcel('upstream', this)">
+            <button class="btn secondary" onclick="toggleAllCards('upstream')">全部展开/收起</button>
+            <div style="flex:1;"></div>
+            <button id="btn-finalize-up" class="btn" onclick="finalize('upstream')">确认入库</button>
+          </div>
+          <!-- Card List -->
+          <div class="card-list" id="upstream-cards">
+            <div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>
           </div>
         </div>
 
         <!-- Downstream Tab Content -->
         <div class="tab-content" id="tab-downstream">
-          <section class="board">
-            <div class="table-wrap" id="downstream-table" style="max-height: 55vh;"></div>
-          </section>
-          <div style="height: 14px;"></div>
-          <div class="board-header">
-            <div class="inline">
-              <button id="btn-finalize-down" class="btn secondary" style="width: auto;" onclick="finalize('downstream')">确认入库</button>
-              <button class="btn secondary" style="width: auto;" onclick="downloadFinal('downstream','csv')">下载CSV</button>
-              <button class="btn secondary" style="width: auto;" onclick="downloadFinal('downstream','xlsx')">下载Excel</button>
-            </div>
+          <!-- Toolbar -->
+          <div class="toolbar">
+            <button class="btn secondary" onclick="exportForEditing('downstream')">导出Excel编辑</button>
+            <button class="btn secondary" onclick="triggerImport('downstream')">上传修改Excel</button>
+            <input type="file" id="import-downstream" class="hidden-input" accept=".xlsx,.xls" onchange="importFromExcel('downstream', this)">
+            <button class="btn secondary" onclick="toggleAllCards('downstream')">全部展开/收起</button>
+            <div style="flex:1;"></div>
+            <button id="btn-finalize-down" class="btn" onclick="finalize('downstream')">确认入库</button>
+          </div>
+          <!-- Card List -->
+          <div class="card-list" id="downstream-cards">
+            <div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>
           </div>
         </div>
 
@@ -546,7 +676,7 @@
         </div>
       </div>
 
-      <!-- Modal for full content view -->
+      <!-- Modal for field editing -->
       <div class="modal-overlay" id="cell-modal" onclick="closeCellModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
           <div class="modal-header">
@@ -569,11 +699,10 @@
       const apiBase = "https://ip-summary.onrender.com";
       let currentTask = null;
       let allTasks = [];
-      const selected = { upstream: new Set(), downstream: new Set() };
       let statusTimer = null;
       let taskListVisible = false;
       let activeTab = "upstream";
-      let currentModalCell = null; // Stores info about the cell being edited in modal
+      let currentModalCell = null; // Stores info about the field being edited in modal
 
       // Initialize on page load
       window.addEventListener("DOMContentLoaded", async () => {
@@ -750,7 +879,7 @@
           }
           const data = await res.json();
           countEl.innerText = `${data.count} 条`;
-          renderTable(direction, data.items || []);
+          renderCards(direction, data.items || []);
         } catch (err) {
           countEl.innerText = "出错";
           toast(`加载出错: ${err.message}`);
@@ -767,41 +896,147 @@
         }
       }
 
-      function renderTable(direction, items) {
-        const container = document.getElementById(`${direction}-table`);
+      // Render cards view
+      function renderCards(direction, items) {
+        const container = document.getElementById(`${direction}-cards`);
         if (!items.length) {
           container.innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
           return;
         }
-        const firstFields = items[0].fields;
-        const headers = Object.keys(firstFields);
-        const headerRow = headers.map((h) => `<th title="${h}">${h}</th>`).join("");
-        let body = "";
-        items.forEach((item, idx) => {
+
+        const html = items.map((item, idx) => {
           const jsonName = item.contract_path.split("/").pop().replace(/\.[^/.]+$/, "") + ".json";
-          const rowInputs = headers
-            .map(
-              (h) => {
-                const val = (item.fields[h] ?? "").toString().replace(/"/g, "&quot;");
-                return `<td><input
-                  data-direction="${direction}"
-                  data-file="${item.contract_path}"
-                  data-key="${h.replace(/"/g, "&quot;")}"
-                  value="${val}"
-                  onblur="saveCell(this)"
-                  ondblclick="openCellModal(this)"
-                  title="双击查看/编辑完整内容"
-                  readonly
-                /></td>`;
-              }
-            )
-            .join("");
-          const actions = `<div class="inline"><button class="btn secondary" style="width:auto;padding:6px 10px;" onclick="moveDirection('${jsonName}','${direction}','${direction==='upstream'?'downstream':'upstream'}')">改为${direction === 'upstream' ? '下游' : '上游'}</button></div>`;
-          const checked = selected[direction].has(jsonName) ? "checked" : "";
-          body += `<tr><td style="min-width:220px; font-weight:600; color: var(--accent);"><input type="checkbox" ${checked} onchange="toggleSelect('${direction}','${jsonName}', this.checked)" /> ${item.contract_path.split("/").pop()}<br/><span class="muted">${actions}</span></td>${rowInputs}</tr>`;
+          const fileName = item.contract_path.split("/").pop();
+          const fields = item.fields;
+          const headers = Object.keys(fields);
+          const oppositeDir = direction === 'upstream' ? 'downstream' : 'upstream';
+          const oppositeName = direction === 'upstream' ? '下游' : '上游';
+
+          const fieldsHtml = headers.map(h => {
+            const val = (fields[h] ?? "").toString();
+            const escapedVal = val.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const escapedKey = h.replace(/"/g, "&quot;");
+            return `
+              <div class="field-row">
+                <div class="field-label" title="${escapedKey}">${h}</div>
+                <div class="field-value"
+                     data-direction="${direction}"
+                     data-file="${item.contract_path}"
+                     data-key="${escapedKey}"
+                     onclick="editField(this)"
+                     title="点击编辑">${escapedVal}</div>
+              </div>
+            `;
+          }).join("");
+
+          return `
+            <div class="contract-card" data-json="${jsonName}">
+              <div class="card-header" onclick="toggleCard(this.parentElement)">
+                <div class="card-title">
+                  <span class="card-toggle">▼</span>
+                  ${fileName}
+                </div>
+                <div class="card-actions" onclick="event.stopPropagation()">
+                  <button class="btn secondary" style="width:auto;margin:0;padding:6px 12px;font-size:12px;"
+                          onclick="moveDirection('${jsonName}','${direction}','${oppositeDir}')">
+                    改为${oppositeName}
+                  </button>
+                </div>
+              </div>
+              <div class="card-body">
+                ${fieldsHtml}
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        container.innerHTML = html;
+      }
+
+      // Toggle single card expand/collapse
+      function toggleCard(cardEl) {
+        cardEl.classList.toggle('collapsed');
+      }
+
+      // Toggle all cards in a direction
+      function toggleAllCards(direction) {
+        const container = document.getElementById(`${direction}-cards`);
+        const cards = container.querySelectorAll('.contract-card');
+        const anyExpanded = Array.from(cards).some(c => !c.classList.contains('collapsed'));
+        cards.forEach(c => {
+          if (anyExpanded) {
+            c.classList.add('collapsed');
+          } else {
+            c.classList.remove('collapsed');
+          }
         });
-        const batchBtns = `<div class="inline" style="margin:8px 0;"><button class="btn secondary" style="width:auto;" onclick="batchMove('${direction}','upstream')">批量改为上游</button><button class="btn secondary" style="width:auto;" onclick="batchMove('${direction}','downstream')">批量改为下游</button></div>`;
-        container.innerHTML = `${batchBtns}<div class="table-wrap-inner"><table><thead><tr><th style="min-width:220px;">文件/操作</th>${headerRow}</tr></thead><tbody>${body}</tbody></table></div>`;
+      }
+
+      // Edit field inline - open modal for editing
+      function editField(el) {
+        const direction = el.getAttribute("data-direction");
+        const filePath = el.getAttribute("data-file");
+        const key = el.getAttribute("data-key");
+        const value = el.innerText;
+
+        currentModalCell = { el, direction, filePath, key };
+
+        document.getElementById("modal-field-name").innerText = key;
+        document.getElementById("modal-textarea").value = value;
+        document.getElementById("cell-modal").classList.add("show");
+        document.getElementById("modal-textarea").focus();
+      }
+
+      // Export for editing
+      function exportForEditing(direction) {
+        if (!currentTask) return toast("请先选择任务");
+        const url = `${apiBase}/tasks/${currentTask.id}/results/${direction}/export`;
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        toast("✓ 正在下载Excel编辑文件");
+      }
+
+      // Trigger file input for import
+      function triggerImport(direction) {
+        if (!currentTask) return toast("请先选择任务");
+        document.getElementById(`import-${direction}`).click();
+      }
+
+      // Import from Excel
+      async function importFromExcel(direction, inputEl) {
+        if (!currentTask) return;
+        const file = inputEl.files[0];
+        if (!file) return;
+
+        toast("正在上传并导入...");
+
+        const fd = new FormData();
+        fd.append("file", file);
+
+        try {
+          const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results/${direction}/import`, {
+            method: "POST",
+            body: fd
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: "导入失败" }));
+            toast(`导入失败: ${err.detail}`);
+            return;
+          }
+          const data = await res.json();
+          toast(`✓ ${data.message}`);
+          // Refresh results
+          await loadResults(direction);
+        } catch (err) {
+          toast(`导入出错: ${err.message}`);
+        } finally {
+          // Clear file input
+          inputEl.value = "";
+        }
       }
 
       // Tab switching function
@@ -817,21 +1052,6 @@
         });
       }
 
-      // Open modal to view/edit full cell content
-      function openCellModal(inputEl) {
-        const direction = inputEl.getAttribute("data-direction");
-        const filePath = inputEl.getAttribute("data-file");
-        const key = inputEl.getAttribute("data-key");
-        const value = inputEl.value;
-
-        currentModalCell = { inputEl, direction, filePath, key };
-
-        document.getElementById("modal-field-name").innerText = key;
-        document.getElementById("modal-textarea").value = value;
-        document.getElementById("cell-modal").classList.add("show");
-        document.getElementById("modal-textarea").focus();
-      }
-
       // Close modal
       function closeCellModal(event) {
         if (event && event.target !== event.currentTarget) return;
@@ -842,11 +1062,13 @@
       // Save content from modal
       async function saveModalContent() {
         if (!currentModalCell) return;
-        const { inputEl, direction, filePath, key } = currentModalCell;
+        const { el, direction, filePath, key } = currentModalCell;
         const newValue = document.getElementById("modal-textarea").value;
 
-        // Update the input field
-        inputEl.value = newValue;
+        // Update the field element display
+        if (el) {
+          el.innerText = newValue;
+        }
 
         // Save to backend
         const filename = filePath.split("/").pop().replace(/\.[^/.]+$/, "") + ".json";
@@ -876,22 +1098,6 @@
         }
       });
 
-      async function saveCell(inputEl) {
-        if (!currentTask) return;
-        const direction = inputEl.getAttribute("data-direction");
-        const filePath = inputEl.getAttribute("data-file");
-        const filename = filePath.split("/").pop().replace(/\.[^/.]+$/, "") + ".json";
-        const key = inputEl.getAttribute("data-key");
-        const value = inputEl.value;
-        const payload = { [key]: value || null };
-        const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results/${direction}/${filename}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) toast("保存失败");
-      }
-
       async function moveDirection(filename, fromDir, toDir) {
         if (!currentTask) return;
         const res = await fetch(`${apiBase}/tasks/${currentTask.id}/results/move`, {
@@ -905,23 +1111,6 @@
         });
         if (!res.ok) return toast("方向调整失败");
         toast(`已移动到${toDir === "upstream" ? "上游" : "下游"}`);
-        await refresh();
-      }
-
-      function toggleSelect(direction, filename, isChecked) {
-        if (!selected[direction]) selected[direction] = new Set();
-        if (isChecked) selected[direction].add(filename);
-        else selected[direction].delete(filename);
-      }
-
-      async function batchMove(fromDir, toDir) {
-        if (!currentTask) return;
-        const list = Array.from(selected[fromDir] || []);
-        if (!list.length) return toast("请先勾选合同");
-        for (const fn of list) {
-          await moveDirection(fn, fromDir, toDir);
-        }
-        selected[fromDir].clear();
         await refresh();
       }
 
@@ -1094,9 +1283,9 @@
           if (currentTask.status === "completed") {
             await refresh();
           } else {
-            // Clear tables
-            document.getElementById("upstream-table").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
-            document.getElementById("downstream-table").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
+            // Clear cards
+            document.getElementById("upstream-cards").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
+            document.getElementById("downstream-cards").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
             document.getElementById("up-count").innerText = "0 条";
             document.getElementById("down-count").innerText = "0 条";
           }
@@ -1153,8 +1342,8 @@
           document.getElementById("finalize-status").innerText = "入库状态：未入库";
           document.getElementById("upload-status").innerText = "等待上传…";
           document.getElementById("uploaded-files-section").style.display = "none";
-          document.getElementById("upstream-table").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
-          document.getElementById("downstream-table").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
+          document.getElementById("upstream-cards").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
+          document.getElementById("downstream-cards").innerHTML = '<div class="muted" style="padding: 20px; text-align: center;">暂无数据</div>';
           document.getElementById("up-count").innerText = "0 条";
           document.getElementById("down-count").innerText = "0 条";
           await loadTaskList();
