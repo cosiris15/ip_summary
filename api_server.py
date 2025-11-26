@@ -22,7 +22,13 @@ from fastapi.staticfiles import StaticFiles
 
 from ip_summary.config import Settings, load_settings
 from ip_summary.pipeline import aggregate_to_outputs, load_headers, process_contracts
-from ip_summary.storage import load_intermediate_folder, aggregate_results
+from ip_summary.storage import (
+    load_intermediate_folder,
+    aggregate_results,
+    aggregate_results_for_database,
+    write_database_outputs,
+)
+from ip_summary.field_converter import FieldConverter
 from ip_summary.tasks import Task, TaskManager
 
 DEFAULT_CONFIG_PATH = Path("config/deepseek_config.yaml")
@@ -404,6 +410,57 @@ def download_archive(task_id: str):
         shutil.make_archive(tmp.name.replace(".zip", ""), "zip", root_dir=final_dir)
         zip_path = tmp.name
     return FileResponse(path=zip_path, filename=f"{task.id}_final.zip", media_type="application/zip")
+
+
+@app.post("/tasks/{task_id}/finalize-db")
+def finalize_for_database(task_id: str, directions: Optional[List[str]] = None):
+    """Generate database-ready outputs with codes instead of text values."""
+    try:
+        task = task_manager.get_task(task_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    dirs = directions or ["upstream", "downstream"]
+    settings = _load_settings_for_task(task)
+    converter = FieldConverter()
+    outputs: Dict[str, Dict[str, str]] = {}
+
+    for d in dirs:
+        outputs[d] = {}
+        headers = headers_def.upstream_headers if d == "upstream" else headers_def.downstream_headers
+        df = aggregate_results_for_database(
+            settings.pipeline.intermediate_dir,
+            headers,
+            d,
+            converter,
+        )
+        if not df.empty:
+            paths = write_database_outputs(df, settings.pipeline.final_dir, f"{task.id}_{d}")
+            outputs[d] = {k: str(v) for k, v in paths.items()}
+
+    return {"status": "ok", "outputs": outputs, "message": "Database-ready files generated with codes"}
+
+
+@app.get("/tasks/{task_id}/final/{direction}/db/{fmt}")
+def download_database_file(task_id: str, direction: str, fmt: str):
+    """Download database-ready file with codes instead of text values."""
+    if direction not in {"upstream", "downstream"}:
+        raise HTTPException(status_code=400, detail="direction must be upstream or downstream")
+    if fmt not in {"csv", "xlsx"}:
+        raise HTTPException(status_code=400, detail="fmt must be csv or xlsx")
+    try:
+        task = task_manager.get_task(task_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    final_dir = Path(task.final_dir)
+    candidates = sorted(
+        final_dir.glob(f"*{direction}*_db.{fmt}"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
+    if not candidates:
+        raise HTTPException(status_code=404, detail="no database file found, please run finalize-db first")
+    target = candidates[0]
+    return FileResponse(path=target, filename=target.name, media_type="application/octet-stream")
 
 
 @app.delete("/tasks/{task_id}")

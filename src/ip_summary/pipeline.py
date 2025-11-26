@@ -21,6 +21,14 @@ from .prompts import (
     PROMPT_VERSION,
     build_classification_messages,
     build_extraction_messages,
+    build_type_classification_messages,
+    build_note_generation_messages,
+)
+from .contract_types import (
+    ContractType,
+    load_contract_types,
+    identify_contract_type_by_keywords,
+    get_type_names_for_prompt,
 )
 from .storage import (
     aggregate_results,
@@ -39,12 +47,16 @@ def load_headers(upstream_path: Path, downstream_path: Path) -> HeaderDefinition
     )
 
 
+NOTE_TEMPLATES_PATH = Path(__file__).parent.parent.parent / "config" / "contract_note_templates.yaml"
+
+
 async def process_contracts(
     settings: Settings,
     my_party: str,
     upstream_header_path: Path,
     downstream_header_path: Path,
     force_direction: Optional[DirectionLiteral] = None,
+    note_templates_path: Optional[Path] = None,
 ) -> List[ExtractionResult]:
     headers = load_headers(upstream_header_path, downstream_header_path)
     ensure_directories(
@@ -52,6 +64,12 @@ async def process_contracts(
         settings.pipeline.intermediate_dir / "upstream",
         settings.pipeline.intermediate_dir / "downstream",
     )
+
+    # Load contract type templates for note generation
+    templates_path = note_templates_path or NOTE_TEMPLATES_PATH
+    contract_types = {}
+    if templates_path.exists():
+        contract_types = load_contract_types(templates_path)
 
     paths = scan_documents(settings.pipeline.input_dir)
     documents = [load_document(p) for p in paths]
@@ -67,6 +85,18 @@ async def process_contracts(
         extraction, raw_extraction = await _extract(
             loaded.text, header_list, my_party, direction, client, semaphore
         )
+
+        # Generate contract note based on type
+        contract_note = None
+        contract_type_name = None
+        if contract_types:
+            contract_type_name, contract_note = await _generate_contract_note(
+                loaded.text, my_party, contract_types, client, semaphore
+            )
+            # Set the note in the extracted fields if "合同备注" is a field
+            if "合同备注" in extraction:
+                extraction["合同备注"] = contract_note
+
         result = ExtractionResult(
             contract_path=loaded.path,
             direction=direction,
@@ -75,7 +105,7 @@ async def process_contracts(
             raw_extraction=raw_extraction,
             classification=classification,
             prompt_version=PROMPT_VERSION,
-            notes=None,
+            notes=f"合同类型：{contract_type_name}" if contract_type_name else None,
         )
         save_intermediate(result, settings.pipeline.intermediate_dir)
         return result
@@ -119,6 +149,73 @@ async def _extract(
     # Ensure all headers exist even when the model omits them.
     fields = {h: parsed.get(h) if isinstance(parsed, dict) else None for h in headers}
     return fields, raw
+
+
+async def _identify_contract_type(
+    contract_text: str,
+    contract_types: Dict[str, ContractType],
+    client: LLMClient,
+    semaphore: asyncio.Semaphore,
+) -> str:
+    """识别合同类型，返回最匹配的类型名称。"""
+    # 先用关键词预筛选
+    hint_type = identify_contract_type_by_keywords(contract_text, contract_types)
+
+    # 生成类型列表说明
+    type_list = get_type_names_for_prompt(contract_types)
+
+    # 调用LLM进行类型识别
+    messages = build_type_classification_messages(contract_text, type_list, hint_type)
+    raw = await _call_llm(messages, client, semaphore)
+    parsed = _safe_json(raw)
+
+    contract_type = parsed.get("contract_type", "")
+    # 验证返回的类型是否在定义中
+    if contract_type and contract_type in contract_types:
+        return contract_type
+
+    # 如果LLM返回的类型不在列表中，使用关键词匹配结果或默认通用类型
+    return hint_type or "通用类型"
+
+
+async def _generate_contract_note(
+    contract_text: str,
+    my_party: str,
+    contract_types: Dict[str, ContractType],
+    client: LLMClient,
+    semaphore: asyncio.Semaphore,
+) -> tuple[str, str]:
+    """生成合同备注。
+
+    Returns:
+        (合同类型名称, 生成的备注内容)
+    """
+    # 识别合同类型
+    contract_type_name = await _identify_contract_type(
+        contract_text, contract_types, client, semaphore
+    )
+
+    # 获取对应模板
+    ct = contract_types.get(contract_type_name)
+    if not ct:
+        ct = contract_types.get("通用类型")
+    if not ct:
+        return contract_type_name, "无法生成备注：未找到对应模板"
+
+    # 调用LLM生成备注
+    messages = build_note_generation_messages(
+        contract_text, contract_type_name, ct.template, my_party
+    )
+    note = await _call_llm(messages, client, semaphore)
+
+    # 清理可能的Markdown格式
+    note = note.strip()
+    if note.startswith("```"):
+        lines = note.split("\n")
+        if len(lines) > 2:
+            note = "\n".join(lines[1:-1])
+
+    return contract_type_name, note
 
 
 async def _call_llm(
